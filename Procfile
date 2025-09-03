@@ -1,1 +1,1 @@
-web: python src/main.py
+web: gunicorn wsgi:app --workers 4 --threads 2

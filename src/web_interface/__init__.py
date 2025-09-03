@@ -1,3 +1,4 @@
+import os
 import dash
 from dash import html, dcc, callback_context
 from dash.dependencies import Input, Output, State
@@ -260,4 +261,6 @@ class WebInterface:
             return stats_div, traffic_fig, protocol_fig, http_analysis, incidents_div
     
     def run(self, debug=True):
-        self.app.run(debug=debug, host='0.0.0.0', port=8050)
+        # Get port from environment variable for cloud deployment
+        port = int(os.getenv('PORT', 8050))
+        self.app.run(debug=debug, host='0.0.0.0', port=port)

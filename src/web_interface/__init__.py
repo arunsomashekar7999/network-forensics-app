@@ -12,7 +12,11 @@ import json
 
 class WebInterface:
     def __init__(self, traffic_analyzer, incident_detector, data_visualizer):
-        self.app = dash.Dash(__name__)
+        self.app = dash.Dash(__name__, 
+                           serve_locally=True,
+                           meta_tags=[{'name': 'viewport',
+                                     'content': 'width=device-width, initial-scale=1.0'}])
+        self.app.server.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key')
         self.traffic_analyzer = traffic_analyzer
         self.incident_detector = incident_detector
         self.data_visualizer = data_visualizer

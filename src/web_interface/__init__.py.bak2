@@ -1,0 +1,161 @@
+import dash
+from dash import html, dcc, callback_context
+from dash.dependencies import Input, Output, State
+import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd
+import base64
+import io
+from datetime import datetime
+import json
+
+class WebInterface:
+    def __init__(self, traffic_analyzer, incident_detector, data_visualizer):
+        self.app = dash.Dash(__name__)
+        self.traffic_analyzer = traffic_analyzer
+        self.incident_detector = incident_detector
+        self.data_visualizer = data_visualizer
+        
+        # Define the navbar style
+        navbar_style = {
+            'backgroundColor': '#2c3e50',
+            'padding': '1rem',
+            'color': 'white',
+            'boxShadow': '0 2px 4px rgba(0,0,0,0.1)',
+            'marginBottom': '2rem'
+        }
+        
+        # Define card style
+        card_style = {
+            'backgroundColor': 'white',
+            'borderRadius': '8px',
+            'boxShadow': '0 2px 4px rgba(0,0,0,0.1)',
+            'padding': '1.5rem',
+            'margin': '1rem'
+        }
+        
+        self.app.layout = html.Div(style={
+            'backgroundColor': '#f5f6fa',
+            'fontFamily': 'Helvetica, Arial, sans-serif',
+            'minHeight': '100vh'
+        }, children=[
+            # Navbar
+            html.Div(style=navbar_style, children=[
+                html.H1("Network Forensics Dashboard", 
+                        style={'margin': '0', 'fontSize': '24px'}),
+                html.P("Real-time network analysis and security monitoring",
+                      style={'margin': '0.5rem 0 0 0', 'opacity': '0.8'})
+            ]),
+            html.H1("Network Forensics Dashboard", 
+                   style={'textAlign': 'center', 'color': '#2c3e50', 'padding': '20px'}),
+            
+            # Main content container
+            html.Div(style={'padding': '0 2rem'}, children=[
+                # File Upload Section
+                html.Div(style=card_style, children=[
+                    html.H3("Upload Network Capture Files", style={'marginBottom': '1rem'}),
+                    dcc.Upload(
+                        id='upload-data',
+                        children=html.Div([
+                            'Drag and Drop or ',
+                            html.A('Select Files', style={'color': '#2c3e50', 'textDecoration': 'underline'})
+                        ]),
+                        style={
+                            'width': '100%',
+                            'height': '60px',
+                            'lineHeight': '60px',
+                            'borderWidth': '1px',
+                            'borderStyle': 'dashed',
+                            'borderRadius': '5px',
+                            'textAlign': 'center',
+                            'margin': '1rem 0'
+                        },
+                        multiple=True
+                    ),
+                    html.Div(id='upload-output'),
+                ]),
+                
+                # Interval for real-time updates
+                dcc.Interval(id='interval-component', interval=5000, n_intervals=0),
+                
+                # Tabs for different views
+                dcc.Tabs(id='tabs', value='live-tab', children=[
+                    dcc.Tab(label='Live Traffic', value='live-tab'),
+                    dcc.Tab(label='File Analysis', value='file-tab'),
+                ], style={'marginTop': '1rem'}),
+            
+            html.Div([
+                html.H3("Traffic Statistics"),
+                html.Div(id='stats-container')
+            ], style={'padding': '20px', 'margin': '10px', 'backgroundColor': 'white', 'borderRadius': '5px'}),
+            
+            html.Div([
+                html.Div([
+                    html.H3("Traffic Volume"),
+                    dcc.Graph(id='traffic-volume-graph')
+                ], style={'width': '48%', 'display': 'inline-block'}),
+                
+                html.Div([
+                    html.H3("Protocol Distribution"),
+                    dcc.Graph(id='protocol-dist-graph')
+                ], style={'width': '48%', 'display': 'inline-block'})
+            ]),
+            
+            html.Div([
+                html.H3("Security Incidents"),
+                html.Div(id='incidents-table')
+            ], style={'padding': '20px', 'margin': '10px', 'backgroundColor': 'white', 'borderRadius': '5px'})
+        ])
+        
+        @self.app.callback(
+            [Output('stats-container', 'children'),
+             Output('traffic-volume-graph', 'figure'),
+             Output('protocol-dist-graph', 'figure'),
+             Output('incidents-table', 'children')],
+            [Input('interval-component', 'n_intervals')]
+        )
+        def update_metrics(n):
+            traffic_data = self.traffic_analyzer.analyze_traffic()
+            incidents = self.incident_detector.detect_incidents(traffic_data)
+            
+            if not traffic_data:
+                return html.Div("No data available"), {}, {}, html.Div("No incidents detected")
+            
+            df = pd.DataFrame(traffic_data)
+            
+            stats = traffic_data[0]['stats']
+            stats_div = html.Div([
+                html.P(f"Total Packets: {stats['total_packets']}"),
+                html.P(f"Unique Sources: {stats['unique_sources']}"),
+                html.P(f"Unique Destinations: {stats['unique_destinations']}"),
+                html.P(f"Average Packet Size: {stats['avg_packet_size']:.2f} bytes")
+            ])
+            
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            traffic_fig = px.line(df, x='timestamp', y='length', title='Network Traffic Volume')
+            protocol_fig = px.pie(df, names='protocol', title='Protocol Distribution')
+            
+            if incidents:
+                incidents_div = html.Table([
+                    html.Thead(html.Tr([
+                        html.Th("Time"),
+                        html.Th("Severity"),
+                        html.Th("Type"),
+                        html.Th("Details")
+                    ])),
+                    html.Tbody([
+                        html.Tr([
+                            html.Td(incident['timestamp']),
+                            html.Td(incident['severity']),
+                            html.Td(incident['type']),
+                            html.Td(incident['details'])
+                        ]) for incident in incidents
+                    ])
+                ])
+            else:
+                incidents_div = html.Div("No incidents detected")
+            
+            return stats_div, traffic_fig, protocol_fig, incidents_div
+    
+    def run(self, debug=True):
+        self.app.run(debug=debug)

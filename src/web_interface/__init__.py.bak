@@ -1,0 +1,151 @@
+import dash
+from dash import html, dcc
+from dash.dependencies import Input, Output
+import plotly.express as px
+import pandas as pd
+
+class WebInterface:
+    def __init__(self, traffic_analyzer, incident_detector, data_visualizer):
+        self.app = dash.Dash(__name__)
+        self.traffic_analyzer = traffic_analyzer
+        self.incident_detector = incident_detector
+        self.data_visualizer = data_visualizer
+        self.traffic_data = []
+        self.incidents = []
+        
+        # Setup the layout
+        self.app.layout = html.Div([
+            html.H1("Network Forensics Dashboard", className='header'),
+            
+            # Refresh interval
+            dcc.Interval(id='interval-component', interval=5000, n_intervals=0),
+            
+            # Traffic Statistics Card
+            html.Div([
+                html.H3("Traffic Statistics"),
+                html.Div(id='stats-container')
+            ], className='card'),
+            
+            # Graphs
+            html.Div([
+                html.Div([
+                    html.H3("Traffic Volume"),
+                    dcc.Graph(id='traffic-volume-graph')
+                ], className='graph-card'),
+                
+                html.Div([
+                    html.H3("Protocol Distribution"),
+                    dcc.Graph(id='protocol-dist-graph')
+                ], className='graph-card')
+            ], className='graph-container'),
+            
+            # Incidents Table
+            html.Div([
+                html.H3("Security Incidents"),
+                html.Div(id='incidents-table')
+            ], className='card'),
+            
+            # CSS
+            html.Div([
+                html.Style('''
+                .header { 
+                    text-align: center;
+                    padding: 20px;
+                    background-color: #2c3e50;
+                    color: white;
+                    margin-bottom: 20px;
+                }
+                .card {
+                    padding: 20px;
+                    margin: 10px;
+                    border-radius: 5px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    background-color: white;
+                }
+                .graph-container {
+                    display: flex;
+                    justify-content: space-between;
+                    margin: 10px;
+                }
+                .graph-card {
+                    width: 48%;
+                    padding: 20px;
+                    border-radius: 5px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    background-color: white;
+                }
+                body {
+                    background-color: #f5f6fa;
+                    margin: 0;
+                    font-family: Arial, sans-serif;
+                }
+            ''')
+        ])
+        
+        self.setup_callbacks()
+        
+    def setup_callbacks(self):
+        @self.app.callback(
+            [Output('stats-container', 'children'),
+             Output('traffic-volume-graph', 'figure'),
+             Output('protocol-dist-graph', 'figure'),
+             Output('incidents-table', 'children')],
+            [Input('interval-component', 'n_intervals')]
+        )
+        def update_metrics(n):
+            # Get new data
+            self.traffic_data = self.traffic_analyzer.analyze_traffic()
+            self.incidents = self.incident_detector.detect_incidents(self.traffic_data)
+            
+            if not self.traffic_data:
+                return html.Div("No data available"), {}, {}, html.Div("No incidents detected")
+            
+            # Create DataFrame
+            df = pd.DataFrame(self.traffic_data)
+            
+            # 1. Traffic Statistics
+            stats = self.traffic_data[0]['stats']
+            stats_div = html.Div([
+                html.P(f"Total Packets: {stats['total_packets']}"),
+                html.P(f"Unique Sources: {stats['unique_sources']}"),
+                html.P(f"Unique Destinations: {stats['unique_destinations']}"),
+                html.P(f"Average Packet Size: {stats['avg_packet_size']:.2f} bytes")
+            ])
+            
+            # 2. Traffic Volume Graph
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            traffic_fig = px.line(df, 
+                                x='timestamp', 
+                                y='length',
+                                title='Network Traffic Volume')
+            
+            # 3. Protocol Distribution
+            protocol_fig = px.pie(df, 
+                                names='protocol',
+                                title='Protocol Distribution')
+            
+            # 4. Incidents Table
+            if self.incidents:
+                incidents_div = html.Table([
+                    html.Thead(html.Tr([
+                        html.Th("Time"),
+                        html.Th("Severity"),
+                        html.Th("Type"),
+                        html.Th("Details")
+                    ])),
+                    html.Tbody([
+                        html.Tr([
+                            html.Td(incident['timestamp']),
+                            html.Td(incident['severity']),
+                            html.Td(incident['type']),
+                            html.Td(incident['details'])
+                        ]) for incident in self.incidents
+                    ])
+                ])
+            else:
+                incidents_div = html.Div("No incidents detected")
+            
+            return stats_div, traffic_fig, protocol_fig, incidents_div
+    
+    def run(self, debug=True):
+        self.app.run_server(debug=debug)

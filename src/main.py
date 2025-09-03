@@ -1,4 +1,5 @@
 
+import os
 from analyzer import TrafficAnalyzer
 from detector import IncidentDetector
 from visualizer import DataVisualizer
@@ -21,12 +22,15 @@ def main():
     
     app = create_app()
     
+    # Get port from environment variable or use default
+    port = int(os.environ.get('PORT', 8050))
+    
     print("\nWeb application is running!")
-    print("Open your web browser and navigate to: http://127.0.0.1:8050")
+    print(f"Open your web browser and navigate to: http://127.0.0.1:{port}")
     print("Press Ctrl+C to stop the application")
     
     # Run the web application
-    app.run(debug=True, host='0.0.0.0', port=8050)
+    app.run(debug=False, host='0.0.0.0', port=port)
 
 # Create the app instance for WSGI servers
 app = create_app()

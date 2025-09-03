@@ -1,4 +1,38 @@
-# Network Forensics Application
+# Network Forensics Dashboard
+
+A real-time network traffic analysis and security monitoring dashboard built with Python and Dash. This application provides live network traffic monitoring, security incident detection, and interactive visualizations.
+
+![Network Forensics Dashboard](dashboard-screenshot.png)
+
+## Live Demo
+Access the live demo at: https://network-forensics-app.onrender.com
+
+## Features
+
+- 🌐 **Real-time Network Monitoring**
+  - Live packet capture and analysis
+  - Protocol distribution visualization
+  - Traffic volume tracking
+
+- 🔍 **Security Incident Detection**
+  - Automated threat detection
+  - Configurable alert thresholds
+  - Incident logging and tracking
+
+- 📊 **Interactive Dashboards**
+  - Real-time traffic graphs
+  - Protocol distribution charts
+  - HTTP/HTTPS analysis
+
+- 📁 **File Analysis**
+  - PCAP file upload and analysis
+  - Log file processing
+  - Historical data review
+
+- 🛡️ **Security Features**
+  - Traffic anomaly detection
+  - Suspicious port monitoring
+  - Large packet detection
 
 This project is a network forensics application designed to analyze network traffic, detect security incidents, and visualize insights using powerful forensic tools. 
 

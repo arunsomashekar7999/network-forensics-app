@@ -260,4 +260,4 @@ class WebInterface:
             return stats_div, traffic_fig, protocol_fig, http_analysis, incidents_div
     
     def run(self, debug=True):
-        self.app.run(debug=debug)
+        self.app.run(debug=debug, host='0.0.0.0', port=8050)
